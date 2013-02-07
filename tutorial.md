@@ -1,17 +1,12 @@
 [TOC]
 
-# Introduction
+# 引言
 
-The structure of this tutorial assumes an intermediate level
-knowledge of Python but not much else. No knowledge of
-concurrency is expected. The goal is to give you
-the tools you need to get going with gevent, help you tame
-your existing concurrency problems and start writing asynchronous
-applications today.
+本教程仅仅需要读者对Python有中等程度的掌握，并不要求对程序的并发性有任何了解。教程的目标是让你可以开始使用gevent，帮助你解决现有的并发性问题并使你今天就能开始编写异步执行的程序。
 
-### Contributors
+### 作者
 
-In chronological order of contribution: 
+以时间顺序排列的作者：
 [Stephen Diehl](http://www.stephendiehl.com)
 [J&eacute;r&eacute;my Bethmont](https://github.com/jerem)
 [sww](https://github.com/sww)
@@ -24,15 +19,18 @@ In chronological order of contribution:
 [Alexis Metaireau](http://notmyidea.org)
 [Daniel Velkov](https://github.com/djv)
 
+另外，感谢gevent的作者Danis Bilenko给予本教程的支持。
 Also thanks to Denis Bilenko for writing gevent and guidance in
 constructing this tutorial.
 
-This is a collaborative document published under MIT license.
-Have something to add? See a typo? Fork and issue a
-pull request [Github](https://github.com/sdiehl/gevent-tutorial).
-Any and all contributions are welcome.
+本文是一个基于MIT许可证的合作文档。
+要添加内容？发现了一个打印错误？请在[Github](https://github.com/sdiehl/gevent-tutorial)上fork并发起一个pull请求。我们欢迎对本文的任何贡献。
 
-This page is also [available in Japanese](http://methane.github.com/gevent-tutorial-ja).
+### 中文译者
+以时间顺序排列的翻译者：
+[Han Liang](https://github.com/blurrcat)
+
+中文翻译在[gevent-tutorial-ch](https://github.com/blurrcat/gevent-tutorial-ch)，欢迎指正翻译中的任何问题。
 
 # Core
 
