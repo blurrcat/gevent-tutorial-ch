@@ -2,7 +2,7 @@
 
 # 引言
 
-本教程仅仅需要读者对Python有中等程度的掌握，并不要求对程序的并发性有任何了解。教程的目标是让你可以开始使用gevent，帮助你解决现有的并发性问题并使你今天就能开始编写异步执行的程序。
+本教程仅仅需要读者对Python有中等程度的掌握, 并不要求对程序的并行性有任何了解. 教程的目标是让你可以开始使用gevent, 帮助你解决现有的并发性问题并使你今天就能开始编写异步执行的程序.
 
 ### 作者
 
@@ -19,42 +19,34 @@
 [Alexis Metaireau](http://notmyidea.org)
 [Daniel Velkov](https://github.com/djv)
 
-另外，感谢gevent的作者Danis Bilenko给予本教程的支持。
+另外, 感谢gevent的作者Danis Bilenko给予本教程的支持.
 Also thanks to Denis Bilenko for writing gevent and guidance in
 constructing this tutorial.
 
-本文是一个基于MIT许可证的合作文档。
-要添加内容？发现了一个打印错误？请在[Github](https://github.com/sdiehl/gevent-tutorial)上fork并发起一个pull请求。我们欢迎对本文的任何贡献。
+本文是一个基于MIT许可证的合作文档.
+要添加内容？发现了一个打印错误？请在[Github](https://github.com/sdiehl/gevent-tutorial)上fork并发起一个pull请求. 我们欢迎对本文的任何贡献.
 
 ### 中文译者
 以时间顺序排列的翻译者：
 [Han Liang](https://github.com/blurrcat)
 
-中文翻译在[gevent-tutorial-ch](https://github.com/blurrcat/gevent-tutorial-ch)，欢迎指正翻译中的任何问题。
+中文翻译在[gevent-tutorial-ch](https://github.com/blurrcat/gevent-tutorial-ch), 欢迎指正翻译中的任何问题.
 
-# Core
+# 核心
 
 ## Greenlets
 
-The primary pattern used in gevent is the <strong>Greenlet</strong>, a
-lightweight coroutine provided to Python as a C extension module.
-Greenlets all run inside of the OS process for the main
-program but are scheduled cooperatively. 
+gevent使用的基本模式是<strong>Greenlet</strong>. Greenlet是一种轻量级的协同程序, 它作为一个C拓展模块被引入到Python之中. 所有的Greenlet都运行于一个系统进程之中, 它们之间的调度是合作的.
 
-> Only one greenlet is ever running at any given time.
+> 在任意时刻, 仅有一个greenlet在运行.
 
-This differs from any of the real parallelism constructs provided by
-``multiprocessing`` or ``threading`` libraries which do spin processes
-and POSIX threads which are scheduled by the operating system and
-are truly parallel.
+gevent的并行是与``multiprocessing``或``threading``等库提供的并行性是不同的. 那些库会通过操作系统来切换进程或POSIX线程, 以实现真正的并行.
 
-## Synchronous & Asynchronous Execution
+## 同步与异步执行
 
-The core idea of concurrency is that a larger task can be broken down
-into a collection of subtasks which are scheduled to run simultaneously
-or *asynchronously*, instead of one at a time or *synchronously*. A
-switch between the two subtasks is known as a *context switch*.
+并发性的核心想法是将一个任务分割成多个子任务, 并调度这些子任务同时或*异步*地执行, 而不是一次执行一个子任务, 即*同步*地执行. 这些子任务之间的切换被称为*上下文切换*.
 
+在gevent中, 我们通过*让渡(yield)*来实现上下文切换. 在下面的例子中有两个上下文, 它们通过调用``gevent.sleep(0)``来相互切换.
 A context switch in gevent is done through *yielding*. In this case
 example we have two contexts which yield to each other through invoking
 ``gevent.sleep(0)``.
@@ -79,20 +71,13 @@ gevent.joinall([
 ]]]
 [[[end]]]
 
-It is illuminating to visualize the control flow of the program or walk
-through it with a debugger to see the context switches as they occur.
+通过下图可以清楚的看到上下文切换的发生, 你也可以使用一个调试器来跟踪程序的控制流.
 
 ![Greenlet Control Flow](flow.gif)
 
-The real power of gevent comes when we use it for network and IO
-bound functions which can be cooperatively scheduled. Gevent has
-taken care of all the details to ensure that your network
-libraries will implicitly yield their greenlet contexts whenever
-possible. I cannot stress enough what a powerful idiom this is.
-But maybe an example will illustrate.
+event的真正力量可以在网络或IO紧张的程序中得到最大发挥, 这类程序可以被合作的调度. Gevent会确保你的网络库在任何可能的时候隐式的让渡上下文. 我不能强调这有多么有用, 但下面的例子可以说明.
 
-In this case the ``select()`` function is normally a blocking
-call that polls on various file descriptors.
+在这个例子中, ```select()``函数通常是一个阻塞的函数, 它对各种文件描述符进行轮询.
 
 [[[cog
 import time
@@ -103,13 +88,13 @@ start = time.time()
 tic = lambda: 'at %1.1f seconds' % (time.time() - start)
 
 def gr1():
-    # Busy waits for a second, but we don't want to stick around...
+    # 忙等待1秒, 但我们并不希望在这里阻塞..
     print('Started Polling: ', tic())
     select.select([], [], [], 2)
     print('Ended Polling: ', tic())
 
 def gr2():
-    # Busy waits for a second, but we don't want to stick around...
+    # 忙等待1秒, 但我们并不希望在这里阻塞..
     print('Started Polling: ', tic())
     select.select([], [], [], 2)
     print('Ended Polling: ', tic())
@@ -126,12 +111,7 @@ gevent.joinall([
 ]]]
 [[[end]]]
 
-Another somewhat synthetic example defines a ``task`` function
-which is *non-deterministic*
-(i.e. its output is not guaranteed to give the same result for
-the same inputs). In this case the side effect of running the
-function is that the task pauses its execution for a random
-number of seconds.
+另一个例子定义了一个*非决定性*的``任务``函数(非决定性是指给定相同的输入, 函数不一定会给出相同的输出). 在这个例子中, 运行该任务函数会导致它暂停一段随机的时间.
 
 [[[cog
 import gevent
@@ -139,7 +119,7 @@ import random
 
 def task(pid):
     """
-    Some non-deterministic task
+    一个非决定性的任务
     """
     gevent.sleep(random.randint(0,2)*0.001)
     print('Task', pid, 'done')
@@ -160,31 +140,13 @@ asynchronous()
 ]]]
 [[[end]]]
 
-In the synchronous case all the tasks are run sequentially,
-which results in the main programming *blocking* (
-i.e. pausing the execution of the main program )
-while each task executes.
+在同步函数``synchronous()``中, 所有的任务顺序执行, 每个任务执行时都会导致主程序*阻塞*(即暂停主程序的执行).
 
-The important parts of the program are the
-``gevent.spawn`` which wraps up the given function
-inside of a Greenlet thread. The list of initialized greenlets 
-are stored in the array ``threads`` which is passed to
-the ``gevent.joinall`` function which blocks the current
-program to run all the given greenlets. The execution will step
-forward only when all the greenlets terminate.
+异步函数``asynchronous()``的重要部分是``gevent.spawn``, 它将一个给定的函数封装进一个greenlet线程中. 初始化的一列greenlet被存储于``threads``之中, 并被传递给``gevent.joinall``, 它将阻塞主程序的执行，直到所有的greenlet的终止.
 
-The important fact to notice is that the order of execution in
-the async case is essentially random and that the total execution
-time in the async case is much less than the sync case. In fact
-the maximum time for the synchronous case to complete is when
-each tasks pauses for 2 seconds resulting in a 20 seconds for the
-whole queue. In the async case the maximum runtime is roughly 2
-seconds since none of the tasks block the execution of the
-others.
+一个重要的事实是，异步函数的执行顺序的随机的，并且其执行时间要远远少于同步函数. 实际上，同步函数的最大执行时间可能达到20秒，此时每个任务都暂停2秒；而异步函数的最大执行时间大致是2秒，因为没有哪个任务会阻塞其他任务的执行。
 
-In a more common use case, asynchronously fetching data from a server,
-the runtime of ``fetch()`` will differ between
-requests, depending on the load on the remote server at the time of the request.
+下面是一个更常见的例子，我们异步地从服务器获取数据，``fetch()``函数的执行时间在各个访问中可能不同，它与服务器在被访问时的负载有关。
 
 <pre><code class="python">import gevent.monkey
 gevent.monkey.patch_socket()
