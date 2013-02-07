@@ -111,7 +111,7 @@ gevent.joinall([
 ]]]
 [[[end]]]
 
-另一个例子定义了一个*非决定性*的``任务``函数(非决定性是指给定相同的输入, 函数不一定会给出相同的输出). 在这个例子中, 运行该任务函数会导致它暂停一段随机的时间.
+另一个例子定义了一个*非确定性*的``任务``函数(非确定性是指给定相同的输入, 函数不一定会给出相同的输出). 在这个例子中, 运行该任务函数会导致它暂停一段随机的时间.
 
 [[[cog
 import gevent
@@ -119,7 +119,7 @@ import random
 
 def task(pid):
     """
-    一个非决定性的任务
+    一个非确定性的任务
     """
     gevent.sleep(random.randint(0,2)*0.001)
     print('Task', pid, 'done')
@@ -182,12 +182,9 @@ asynchronous()
 </code>
 </pre>
 
-## Determinism
+## 确定性
 
-As mentioned previously, greenlets are deterministic. Given the same
-configuration of greenlets and the same set of inputs, they always
-produce the same output. For example, let's spread a task across a
-multiprocessing pool and compare its results to the one of a gevent pool.
+在上文中我们提到，greenlet是具有确定性的。给定相同的配置的greenlet以及相同的输入，它们总是会给出相同的输出。在下面的例子中，我们将把一个任务分布到一个进程池中，并把它的结果与分布到gevent池(gevent pool)中的任务结果相比较。
 
 <pre>
 <code class="python">
@@ -197,7 +194,7 @@ def echo(i):
     time.sleep(0.001)
     return i
 
-# Non Deterministic Process Pool
+# 非确定性的进程池
 
 from multiprocessing.pool import Pool
 
@@ -209,7 +206,7 @@ run4 = [a for a in p.imap_unordered(echo, xrange(10))]
 
 print( run1 == run2 == run3 == run4 )
 
-# Deterministic Gevent Pool
+# 决定性的gevent池
 
 from gevent.pool import Pool
 
@@ -228,29 +225,15 @@ print( run1 == run2 == run3 == run4 )
 True</code>
 </pre>
 
-Even though gevent is normally deterministic, sources of
-non-determinism can creep into your program when you begin to
-interact with outside services such as sockets and files. Thus
-even though green threads are a form of "deterministic
-concurrency", they still can experience some of the same problems
-that POSIX threads and processes experience.
+尽管gevent通常是确定性的，但当你开始与套接字或文件等外部服务进行交互时，不确定性因素可能进入你的程序。因此，即使绿色线程(green thread)是一种"决定性的并发", 你仍然可能会遇到一些在POSIX线程和进程中遇到的并发问题。
 
-The perennial problem involved with concurrency is known as a
-*race condition*. Simply put, a race condition occurs when two concurrent threads
-/ processes depend on some shared resource but also attempt to
-modify this value. This results in resources which values become
-time-dependent on the execution order. This is a problem, and in
-general one should very much try to avoid race conditions since
-they result in a globally non-deterministic program behavior.
+并发程序一个常见问题是*竞争条件(race condition)*. 简单的说，当两个并发的线程或进程依赖于某些共享资源并企图修改它时就会发生竞争条件。这将导致该共享资源的值与程序的执行顺序在时间上相关。这是一个应该尽量避免的问题，因为它使得程序的行为在全局上变得不确定。
 
-The best approach to this is to simply avoid all global state at all
-times. Global state and import-time side effects will always come
-back to bite you!
+解决这个问题的最好方式是在任何时候都避免使用全局状态。全局状态和导入时的副作用总会在某个时候回来咬你一口！
 
-## Spawning Greenlets
+## 创建greenlet
 
-gevent provides a few wrappers around Greenlet initialization.
-Some of the most common patterns are:
+gevent对greenlet的初始化提供了一些封装。下面是常见的使用模式:
 
 [[[cog
 import gevent
@@ -258,32 +241,29 @@ from gevent import Greenlet
 
 def foo(message, n):
     """
-    Each thread will be passed the message, and n arguments
-    in its initialization.
+    每个线程在初始化时会得到一个消息message，以及参数n.
     """
     gevent.sleep(n)
     print(message)
 
-# Initialize a new Greenlet instance running the named function
+# 初始化一个greenlet实例来运行命名函数
 # foo
 thread1 = Greenlet.spawn(foo, "Hello", 1)
 
-# Wrapper for creating and runing a new Greenlet from the named 
-# function foo, with the passed arguments
+# 通过命名函数foo以及函数参数来创建和运行新的greenlet
 thread2 = gevent.spawn(foo, "I live!", 2)
 
-# Lambda expressions
+# Lambda表达式
 thread3 = gevent.spawn(lambda x: (x+1), 2)
 
 threads = [thread1, thread2, thread3]
 
-# Block until all threads complete.
+# 阻塞主程序直到所有greenlet运行结束
 gevent.joinall(threads)
 ]]]
 [[[end]]]
 
-In addition to using the base Greenlet class, you may also subclass
-Greenlet class and override the ``_run`` method.
+除了使用基类Greenlet, 你也可以继承Greenlet类并覆盖 ``_run`` 方法。
 
 [[[cog
 import gevent
@@ -307,21 +287,17 @@ g.join()
 [[[end]]]
 
 
-## Greenlet State
+## Greenlet的状态
 
-Like any other segment of code, Greenlets can fail in various
-ways. A greenlet may fail to throw an exception, fail to halt or
-consume too many system resources.
+与其他任何代码相同，greenlet可能会在很多地方出错。一个greenlet可能抛出异常，停止，或消耗太多的系统资源。
 
-The internal state of a greenlet is generally a time-dependent
-parameter. There are a number of flags on greenlets which let
-you monitor the state of the thread:
+greenlet的内部状态通常是时变的。下面是一些让你监督线程状态的greenlet标志:
 
-- ``started`` -- Boolean, indicates whether the Greenlet has been started
-- ``ready()`` -- Boolean, indicates whether the Greenlet has halted
-- ``successful()`` -- Boolean, indicates whether the Greenlet has halted and not thrown an exception
-- ``value`` -- arbitrary, the value returned by the Greenlet
-- ``exception`` -- exception, uncaught exception instance thrown inside the greenlet
+- ``started`` -- Boolean, 表征Greenlet是否已经开始
+- ``ready()`` -- Boolean, 表征Greenlet是否已经停止
+- ``successful()`` -- Boolean, 表征Greenlet是否已经停止并且没有抛出任何异常
+- ``value`` -- 任意值, Greenlet的返回值
+- ``exception`` -- exception, greenlet内部抛出的、未捕捉的异常
 
 [[[cog
 import gevent
@@ -338,7 +314,7 @@ loser = gevent.spawn(fail)
 print(winner.started) # True
 print(loser.started)  # True
 
-# Exceptions raised in the Greenlet, stay inside the Greenlet.
+# Greenlet内部产生的异常会停留在greenlet之内
 try:
     gevent.joinall([winner, loser])
 except Exception as e:
@@ -353,28 +329,23 @@ print(loser.ready())  # True
 print(winner.successful()) # True
 print(loser.successful())  # False
 
-# The exception raised in fail, will not propogate outside the
-# greenlet. A stack trace will be printed to stdout but it
-# will not unwind the stack of the parent.
+# fail函数抛出的异常不会传播到到greenlet之外。
+# 一个堆栈跟踪会在标准输出上打印，但它不会延伸到父进程的堆栈。
 
 print(loser.exception)
 
-# It is possible though to raise the exception again outside
+# 我们可以通过以下方式将异常再次抛出到greenlet之外:
 # raise loser.exception
-# or with
+# 或
 # loser.get()
 ]]]
 [[[end]]]
 
-## Program Shutdown
+## 程序的停止
 
-Greenlets that fail to yield when the main program receives a
-SIGQUIT may hold the program's execution longer than expected.
-This results in so called "zombie processes" which need to be
-killed from outside of the Python interpreter.
+在主程序收到SIGQUIT信号时，未能成功让渡的greenlet可能会使程序的执行比预期的更长。这将导致所谓的"僵尸进程"，它们必须在Python解释器之外终止。
 
-A common pattern is to listen SIGQUIT events on the main program
-and to invoke ``gevent.shutdown`` before exit.
+这个问题的常见解决方式是在主程序中侦听SIGQUIT事件，并在退出之前调用``gevent.shutdown``.
 
 <pre>
 <code class="python">import gevent
@@ -390,10 +361,9 @@ if __name__ == '__main__':
 </code>
 </pre>
 
-## Timeouts
+## 超时
 
-Timeouts are a constraint on the runtime of a block of code or a
-Greenlet.
+超时是指对一段代码或一个greenlet在执行时间上的限制。
 
 <pre>
 <code class="python">
@@ -416,7 +386,7 @@ except Timeout:
 </code>
 </pre>
 
-They can also be used with a context manager, in a ``with`` statement.
+超时也可以通过with表达式使用上下文管理器实现。
 
 <pre>
 <code class="python">import gevent
@@ -432,8 +402,7 @@ with Timeout(time_to_wait, TooLong):
 </code>
 </pre>
 
-In addition, gevent also provides timeout arguments for a
-variety of Greenlet and data stucture related calls. For example:
+另外，gevent还为greenlet和许多数据结构提供了超时参数。例如:
 
 [[[cog
 import gevent
@@ -470,14 +439,9 @@ except Timeout:
 ]]]
 [[[end]]]
 
-## Monkeypatching
+## 猴子补丁(Monkeypatching)
 
-Alas we come to dark corners of Gevent. I've avoided mentioning
-monkey patching up until now to try and motivate the powerful
-coroutine patterns but the time has come to discuss the dark arts
-of monkey-patching. If you noticed above we invoked the commnad
-``monkey.patch_socket()``. This is a purely side-effectful command to
-modify the standard library's socket library
+唉，我们现在到了Gevent的黑暗角落。到现在为止，我一直试图激发你使用强大的协同程序模式，并避免提到猴子补丁。但现在我们不得不对猴子补丁的黑暗艺术进行讨论了。可能你已经注意到我们在上面的例子中调用了``monkey.patch_socket()``这个命令。这是一个完全只有副作用的命令，它将修改标准库中的套接字库。
 
 <pre>
 <code class="python">import socket
@@ -507,32 +471,17 @@ function select at 0x1924de8
 </code>
 </pre>
 
-Python's runtime allows for most objects to be modified at runtime
-including modules, classes, and even functions. This is generally an
-astoudingly bad idea since it creates an "implicit side-effect" that is
-most often extremely difficult to debug if problems occur, nevertheless
-in extreme situations where a library needs to alter the fundamental
-behavior of Python itself monkey patches can be used. In this case gevent
-is capable of patching most of the blocking system calls in the standard
-library including those in ``socket``, ``ssl``, ``threading`` and
-``select`` modules to instead behave cooperatively.
+Python允许大多数对象在运行时被修改，包括模块，类，甚至是函数。通常来说，这是个令人震惊的坏主意，因为它会产生"隐式副作用"。在问题出现时它将使得debug变得极其困难。然而，在极端情况下，一个库可能需要修改Python本身的行为，这时就可以使用猴子补丁。gevent对大多数阻塞的系统调用都打了补丁，包括``socket``, ``ssl``, ``threading`` 和 ``select``中的各个函数。这使得这些库的行为变得合作。
 
-For example, the Redis python bindings normally uses regular tcp
-sockets to communicate with the ``redis-server`` instance. Simply
-by invoking ``gevent.monkey.patch_all()`` we can make the redis
-bindings schedule requests cooperatively and work with the rest
-of our gevent stack.
+例如，Redis的python绑定通常使用普通的tcp套接字来与``redis-server``进行通信。通过简单的调用``gevent.monkey.patch_all()``，我们就可以让redis合作的调度各个访问，并与gevent的其他部分正常的工作。
 
-This lets us integrate libraries that would not normally work with
-gevent without ever writing a single line of code. While monkey-patching
-is still evil, in this case it is a "useful evil".
+这使得许多通常不能与gevent一起工作的库可以与gevent进行整合，而我们甚至一行代码都不用写。尽管猴子补丁是罪恶的，但在这里它仍然是"有用的罪恶"。
 
-# Data Structures
+# 数据结构
 
-## Events
+## 事件(Events)
 
-Events are a form of asynchronous communication between
-Greenlets.
+事件是一种greenlet之间进行异步通讯的方式。
 
 <pre>
 <code class="python">import gevent
@@ -542,17 +491,16 @@ a = AsyncResult()
 
 def setter():
     """
-    After 3 seconds set wake all threads waiting on the value of
-    a.
+    在3秒后对所有等待a的值的线程进行set
     """
     gevent.sleep(3)
     a.set()
 
 def waiter():
     """
-    After 3 seconds the get call will unblock.
+    在3秒后get调用将停止阻塞
     """
-    a.get() # blocking
+    a.get() # 阻塞
     print 'I live!'
 
 gevent.joinall([
@@ -563,11 +511,7 @@ gevent.joinall([
 </code>
 </pre>
 
-A extension of the Event object is the AsyncResult which
-allows you to send a value along with the wakeup call. This is
-sometimes called a future or a deferred, since it holds a 
-reference to a future value that can be set on an arbitrary time
-schedule.
+对Event对象的一个扩展是AsyncResult(异步结果)，它允许你发送一个值以及一个唤醒调用。它有时又被称作未来(future)或者延迟(deferred), 因为它持有一个对未来值的引用，并可以在安排在任意时刻对这个值进行修改。
 
 <pre>
 <code class="python">import gevent
@@ -576,15 +520,14 @@ a = AsyncResult()
 
 def setter():
     """
-    After 3 seconds set the result of a.
+    在3秒后设置a的值
     """
     gevent.sleep(3)
     a.set('Hello!')
 
 def waiter():
     """
-    After 3 seconds the get call will unblock after the setter
-    puts a value into the AsyncResult.
+    在3秒后，a的值会被设置，此后get调用将停止阻塞
     """
     print a.get()
 
@@ -596,7 +539,7 @@ gevent.joinall([
 </code>
 </pre>
 
-## Queues
+## 队列(Queues)
 
 Queues are ordered sets of data that have the usual ``put`` / ``get``
 operations but are written in a way such that they can be safely
